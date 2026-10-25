@@ -97,6 +97,13 @@
 <div class="wrap">
   <h1>🎂 사진 카드 만들기</h1>
 
+  <div class="step" id="inapp" hidden>
+    <h2>⚠️ 크롬으로 열어 주세요</h2>
+    <p class="hint" style="margin:0 0 10px">지금 보고 있는 앱 안의 브라우저(카카오톡 등)에서는 파일 저장이 안 돼요. 크롬으로 열면 저장돼요.</p>
+    <a class="btn" id="openchrome" href="#" style="text-align:center;text-decoration:none">🌐 크롬으로 열기</a>
+    <p class="hint">안 열리면 오른쪽 위 ⋮ 메뉴에서 "다른 브라우저로 열기"를 눌러 주세요.</p>
+  </div>
+
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-img" aria-selected="true">📷 이미지 (JPG)</button>
     <button class="tab" role="tab" id="tab-vid" aria-selected="false">🎬 영상 (MP4)</button>
@@ -573,6 +580,16 @@ async function recordFallback(canvas, ctx, n, onProgress) {
   return new Blob(chunks, { type: mime.split(';')[0] });
 }
 
+// ───────── 앱 안 브라우저(카카오톡 등) 안내 ─────────
+const IN_APP = /KAKAOTALK|NAVER\(inapp|Line\/|Instagram|FBAN|FBAV|DaumApps/i.test(navigator.userAgent);
+if (IN_APP) {
+  $('#inapp').hidden = false;
+  const here = location.href;
+  $('#openchrome').href = /KAKAOTALK/i.test(navigator.userAgent)
+    ? `kakaotalk://web/openExternal?url=${encodeURIComponent(here)}`
+    : `intent://${here.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`;
+}
+
 // ───────── 만들기·저장·공유 ─────────
 let tab = 'img', out = null;
 function setTab(name) {
@@ -596,7 +613,7 @@ function showResult(blob, ext) {
   host.appendChild(el);
   $('#result').hidden = false;
   $('#share').hidden = !(navigator.canShare && navigator.canShare({ files: [new File([blob], out.name, { type: blob.type })] }));
-  $('#rhint').textContent = ext === 'webm' ? '이 기기에서는 webm 형식으로 만들어졌어요. 재생은 잘 되지만 MP4가 필요하면 크롬이나 엣지로 다시 만들어 주세요.' : '저장하기를 누르면 기기의 다운로드 폴더에 저장돼요.';
+  $('#rhint').textContent = IN_APP ? '이 앱 안에서는 저장 버튼이 안 될 수 있어요. 위에 있는 사진을 손가락으로 길게 눌러 저장하거나, 크롬으로 열어 주세요.' : ext === 'webm' ? '이 기기에서는 webm 형식으로 만들어졌어요. 재생은 잘 되지만 MP4가 필요하면 크롬이나 엣지로 다시 만들어 주세요.' : '저장하기를 누르면 기기의 다운로드 폴더에 저장돼요.';
   $('#result').scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 $('#save').onclick = () => {
