@@ -370,7 +370,7 @@ function sprinkles(ctx, seed, count, cols, avoid) {
   const r = rng(seed);
   for (let i = 0; i < count; i++) {
     const x = r() * IW, y = r() * IH, k = r(), c = cols[Math.floor(r() * cols.length)];
-    if (avoid && x > avoid.x && x < avoid.x + avoid.w && y > avoid.y && y < avoid.y + avoid.h) continue;  // 글씨 자리는 비움
+    if (avoid && [].concat(avoid).some((a) => x > a.x && x < a.x + a.w && y > a.y && y < a.y + a.h)) continue;  // 글씨 자리는 비움
     ctx.fillStyle = c;
     if (k < 0.45) { ctx.beginPath(); ctx.arc(x, y, 5 + r() * 8, 0, 6.3); ctx.fill(); }
     else if (k < 0.75) { ctx.save(); ctx.translate(x, y); ctx.rotate(r() * 6.28); ctx.fillRect(-14, -5, 28, 10); ctx.restore(); }
@@ -490,22 +490,22 @@ const IMG_LAYOUTS = {
   } },
   duo: { name: '사진 2장 + 문구 3줄', draw(ctx, p, t, o) {
     argyle(ctx, '#fff8e3', '#fff0c4');
-    sprinkles(ctx, 8, 30, [PAL.hot, PAL.sky, PAL.yellow, PAL.mint]);
+    sprinkles(ctx, 8, 30, [PAL.hot, PAL.sky, PAL.yellow, PAL.mint], [{ x: 120, y: 250, w: 840, h: 130 }, { x: 150, y: 895, w: 780, h: 455 }]);
     if (p.length >= 2) {
-      framedPhoto(ctx, p[0], { x: 130, y: 390, w: 400, h: 400 }, { shape: 'circle', border: 20 });
-      framedPhoto(ctx, p[1], { x: 570, y: 490, w: 380, h: 380 }, { shape: 'circle', border: 20 });
+      framedPhoto(ctx, p[0], { x: 130, y: 400, w: 400, h: 400 }, { shape: 'circle', border: 20 });
+      framedPhoto(ctx, p[1], { x: 570, y: 500, w: 380, h: 380 }, { shape: 'circle', border: 20 });
     } else {
-      framedPhoto(ctx, p[0], { x: 295, y: 385, w: 490, h: 490 }, { shape: 'circle', border: 22 });
+      framedPhoto(ctx, p[0], { x: 295, y: 395, w: 490, h: 490 }, { shape: 'circle', border: 22 });
     }
     deco(ctx, 'garland-bright', 540, 115, 1080);
-    titleT(ctx, t.title, 540, 310, 100, 800);
+    titleT(ctx, t.title, 540, 298, 100, 800);
     deco(ctx, 'balloon-pink', 70, 880, 150, -0.15); deco(ctx, 'balloon', 1010, 450, 140, 0.15, true);
-    if (p.length >= 2) deco(ctx, 'star', 470, 905, 90, 0.2); else deco(ctx, 'star', 190, 900, 90, 0.2);
-    nameT(ctx, t.line2, 540, 962, 58, 640);
+    if (p.length >= 2) deco(ctx, 'star', 470, 858, 80, 0.2); else deco(ctx, 'star', 140, 880, 80, 0.2);
+    nameT(ctx, t.line2, 540, 968, 58, 640);
     ctx.save(); ctx.shadowColor = 'rgba(80,40,60,.18)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8;
-    rrect(ctx, 160, 1030, 760, 210, 40); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill(); ctx.restore();
-    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1080 + i * 58, 46, 680));
-    dateT(ctx, t.date, 540, 1276, 36, 700, PAL.blue);
+    rrect(ctx, 160, 1034, 760, 198, 40); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill(); ctx.restore();
+    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1080 + i * 56, 46, 680));
+    dateT(ctx, t.date, 540, 1262, 36, 700, PAL.blue);
     deco(ctx, 'cake', 80, 1050, 150); deco(ctx, 'gift', 1000, 1055, 140, 0.08);
   } },
   polaroid: { name: '폴라로이드', draw(ctx, p, t) {
@@ -519,18 +519,18 @@ const IMG_LAYOUTS = {
   } },
   scatter: { name: '폴라로이드 3장', draw(ctx, p, t) {
     gradient(ctx, IW, IH, '#cfe3ff', '#eef4ff');
-    sprinkles(ctx, 15, 40, ['#ffffff', PAL.hot, PAL.yellow, PAL.sky, PAL.pink]);
+    sprinkles(ctx, 15, 40, ['#ffffff', PAL.hot, PAL.yellow, PAL.sky, PAL.pink], { x: 100, y: 50, w: 880, h: 250 });
     const k = Math.min(p.length, 3);
     const W = { 2: 520, 3: 450 }[k];
     const POS = {
-      2: [[380, 620, -0.07], [700, 900, 0.06]],
-      3: [[290, 585, -0.08], [790, 660, 0.06], [520, 960, -0.03]],
+      2: [[380, 632, -0.07], [700, 912, 0.06]],
+      3: [[290, 597, -0.08], [790, 672, 0.06], [520, 972, -0.03]],
     }[k];
     const tapes = ['#ffd25e', '#ff8fab', '#5fc9d6'];
     POS.forEach(([x, y, r], i) => polaroid(ctx, p[i], x, y, W, r, '', tapes[i]));
     titleT(ctx, t.title, 540, 105, 96, 800);
-    nameT(ctx, t.line2, 540, 185, 52, 700);
-    dateT(ctx, t.date, 540, 245, 40, 700, PAL.blue);
+    nameT(ctx, t.line2, 540, 200, 52, 700);
+    dateT(ctx, t.date, 540, 261, 40, 700, PAL.blue);
     deco(ctx, 'star', 50, 760, 80, -0.3); deco(ctx, 'star', 1030, 830, 80, 0.3);
     deco(ctx, 'balloon-pink', 70, 1210, 140, -0.15); deco(ctx, 'balloon-yellow', 1010, 1190, 130, 0.15, true);
   } },
@@ -547,7 +547,7 @@ const IMG_LAYOUTS = {
     S.forEach((s, i) => framedPhoto(ctx, p[i], { x: s.x, y: s.y, w: s.w, h: s.h, r: 36 }, { border: 16, rot: s.rot }));
     titleT(ctx, t.title, 540, 150, 124, 800);
     nameT(ctx, t.line2, 540, 955, 58, 700);
-    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1038 + i * 58, 46, 800, PAL.ink, true));
+    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1038 + i * 58, 46, 700, PAL.ink, true));
     dateT(ctx, t.date, 540, 1222, 42, 760);
     deco(ctx, 'balloon-yellow', 90, 1200, 150, -0.15); deco(ctx, 'balloon', 990, 1190, 140, 0.15, true);
     deco(ctx, 'star', 90, 930, 90, -0.3); deco(ctx, 'star', 990, 935, 80, 0.3);
@@ -561,7 +561,7 @@ const cardLayoutId = (i, k) => ['circle', 'duo', k === 1 ? 'polaroid' : 'scatter
 // 모든 카드 하단 중앙에 들어가는 어린이집 이름
 const BRAND = '우남사랑아이어린이집';
 function brandMark(ctx) {
-  text(ctx, BRAND, IW / 2, 1322, { font: FONTS.round.css, weight: FONTS.round.weight, size: 30, maxW: 600, color: PAL.ink, stroke: { color: '#fff', width: 8 } });
+  text(ctx, BRAND, IW / 2, 1324, { font: FONTS.round.css, weight: FONTS.round.weight, size: 30, maxW: 600, color: PAL.ink, stroke: { color: '#fff', width: 8 } });
 }
 
 // 카드마다: 공통 문구 보이기 여부, 3줄 문구(카드 2·4만 사용), 쓸 사진 번호(null이면 기본값)
