@@ -7,3 +7,9 @@ npm-Debug.log*
 node_modules/
 
 # Runtime data
+
+# Claude Code
+CLAUDE.md
+.claude/
+.DS_Store
+

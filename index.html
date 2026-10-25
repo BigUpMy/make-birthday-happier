@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>사진 카드 만들기</title>
+<!-- 카드 제목용 웹폰트(모두 OFL 라이선스). 불러오지 못하면 시스템 글꼴로 대신 그려요. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Gaegu:wght@700&family=Jua&display=swap">
 <style>
   :root {
     --bg: #fff8f4;
@@ -55,6 +59,18 @@
     background: var(--soft); touch-action: none;
   }
   #vcanvas { max-width: 320px; margin-inline: auto; }
+  .cards { display: grid; gap: 18px; }
+  .cardbox canvas.preview { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+  .cardbox .cap { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .thumb .badge { position: absolute; left: 10px; top: 10px; min-width: 26px; height: 26px; line-height: 26px; text-align: center; border-radius: 13px; background: var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 15px; }
+  .chips { margin-top: 8px; }
+  .chiprow { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { min-width: 48px; min-height: 44px; font: inherit; font-size: 20px; font-weight: 700; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); }
+  .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--soft); }
+  .copts { margin-top: 4px; }
+  .copts label.tog { display: inline-flex; align-items: center; gap: 6px; margin: 0 16px 0 0; min-height: 44px; font-size: 16px; }
+  .copts .tog input { width: 24px; height: 24px; accent-color: var(--accent); }
+  .msgs { margin-top: 10px; padding-left: 10px; border-left: 4px solid var(--accent); } .msgs .hint { margin: 0 0 2px; font-weight: 600; color: var(--ink); } .msgs input { margin-top: 6px; }
   .tpls { display: flex; gap: 8px; flex-wrap: wrap; }
   .tpl {
     flex: 1 1 calc(50% - 8px); padding: 12px 8px; font: inherit; font-weight: 600;
@@ -79,11 +95,11 @@
   .hint { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
   .warn { background: var(--soft); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: 0 0 12px; }
   .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .thumb { width: calc(33.3% - 6px); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+  .thumb { position: relative; width: calc(33.3% - 6px); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
   .thumb img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; }
   .thumb .ctl { display: flex; justify-content: space-between; margin-top: 4px; }
   .thumb button {
-    flex: 1; font: inherit; font-size: 15px; padding: 6px 0; border: 0; background: transparent; color: var(--ink);
+    flex: 1; font: inherit; font-size: 18px; padding: 13px 0; border: 0; background: transparent; color: var(--ink);
   }
   .bar { height: 12px; background: var(--soft); border-radius: 6px; overflow: hidden; margin-top: 10px; }
   .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s; }
@@ -112,19 +128,11 @@
   <!-- 이미지 -->
   <section id="pane-img">
     <div class="step">
-      <canvas id="icanvas" class="preview" width="1080" height="1350"></canvas>
-      <p class="hint">사진을 손가락으로 끌면 위치가 바뀌어요.</p>
-    </div>
-    <div class="step">
-      <h2><span>①</span>틀 고르기</h2>
-      <div class="tpls" id="itpls"></div>
-    </div>
-    <div class="step">
-      <h2><span>②</span>사진 고르기</h2>
-      <label class="btn second" for="ifile" style="text-align:center">📂 사진 한 장 고르기</label>
-      <input type="file" id="ifile" accept="image/*">
-      <label for="izoom">확대</label>
-      <input type="range" id="izoom" min="1" max="3" step="0.01" value="1">
+      <h2><span>①</span>사진 고르기 (1~5장)</h2>
+      <label class="btn second" for="ifile" style="text-align:center">📂 사진 고르기</label>
+      <input type="file" id="ifile" accept="image/*" multiple>
+      <p class="hint" id="icount">사진을 1~5장 골라 주세요. 사진에 어울리는 카드 4장을 만들어 드려요.</p>
+      <div class="thumbs" id="ithumbs"></div>
     </div>
   </section>
 
@@ -151,7 +159,7 @@
 
   <!-- 글자 (이미지·영상 공통) -->
   <div class="step">
-    <h2><span>③</span>글자 고치기</h2>
+    <h2><span id="tno">②</span>글자 고치기</h2>
     <label for="t-title">큰 문구</label>
     <input type="text" id="t-title" value="Happy Birthday!" autocomplete="off">
     <label for="t-line2">누구의 생일인가요?</label>
@@ -165,7 +173,19 @@
     <p class="hint">큰 문구는 그대로 두고, 이름과 날짜만 바꾸면 돼요. 날짜는 열 때마다 오늘로 채워져요.</p>
   </div>
 
-  <div class="step">
+  <!-- 이미지 탭: 만들어진 카드 4장 -->
+  <div class="step" id="step-cards">
+    <h2><span>③</span>카드 4장</h2>
+    <p class="hint" style="margin:0 0 10px">마음에 드는 카드를 골라 저장하세요. 글자를 고치면 4장이 같이 바뀌어요. 사진 칸 위에서 두 손가락을 벌리면 사진이 커지고, 같이 움직이면 위치가 바뀌어요. (컴퓨터: 마우스로 끌기, Ctrl+휠로 크기)</p>
+    <div class="cards" id="cards"></div>
+    <div class="row">
+      <button class="btn" id="isaveall">💾 4장 모두 저장</button>
+      <button class="btn second" id="ishare" hidden>📤 4장 모두 공유</button>
+    </div>
+    <p class="hint" id="icards-msg"></p>
+  </div>
+
+  <div class="step" id="step-make" hidden>
     <h2><span>④</span>만들기</h2>
     <button class="btn" id="make">만들기</button>
     <div class="bar" id="bar" hidden><i></i></div>
@@ -213,15 +233,22 @@ function rrect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 // 글자가 maxW보다 길면 글자 크기를 줄여서 맞춤
+// o.font: 글꼴 문자열(FONTS 참고), o.stroke: { color, width } 글자 바깥 테두리(스티커 느낌)
 function text(ctx, str, x, y, o) {
-  const fam = o.serif ? TITLE_FONT : BODY_FONT;
+  const fam = o.font || (o.serif ? TITLE_FONT : BODY_FONT);
   let size = o.size;
   const set = () => { ctx.font = `${o.italic ? 'italic ' : ''}${o.weight || 700} ${size}px ${fam}`; };
   set();
   while (ctx.measureText(str).width > o.maxW && size > 20) { size -= 2; set(); }
-  ctx.fillStyle = o.color;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  if (o.stroke) {
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineWidth = o.stroke.width; ctx.strokeStyle = o.stroke.color;
+    ctx.strokeText(str, x, y);
+    ctx.restore();
+  }
+  ctx.fillStyle = o.color;
   ctx.fillText(str, x, y);
 }
 function rng(seed) {
@@ -262,6 +289,50 @@ function gradient(ctx, W, H, c1, c2) {
   g.addColorStop(0, c1); g.addColorStop(1, c2);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
+// 이미지 틀 제목에 고를 수 있는 웹폰트. 한글이 없는 글꼴은 뒤의 시스템 글꼴로 이어서 그려짐
+const FONTS = {
+  script: { name: '필기체', css: `"Dancing Script", ${TITLE_FONT}`, weight: 700 },
+  round: { name: '둥근 글씨', css: `"Jua", ${BODY_FONT}`, weight: 400 },
+  hand: { name: '손글씨', css: `"Gaegu", ${BODY_FONT}`, weight: 700 },
+};
+// canvas는 글꼴이 준비되기 전에 그리면 시스템 글꼴로 나오므로, 먼저 불러오고 다시 그림
+function loadFonts() {
+  const sample = 'Happy Birthday! 생일 축하해요 0123';
+  return Promise.all(Object.values(FONTS).map((f) => document.fonts.load(`${f.weight} 40px ${f.css.split(',')[0]}`, sample))).catch(() => {});
+}
+
+// SVG 장식(assets/*.svg). 못 불러와도 틀은 장식 없이 그려짐
+const DECO_NAMES = ['garland', 'garland-bright', 'balloon', 'balloon-pink', 'balloon-yellow', 'gift', 'star', 'cake'];
+const DECOS = {};
+const ASSET_V = 2;  // assets/*.svg를 고치면 이 숫자를 올려야 브라우저가 옛날 파일을 재사용하지 않음
+const decosReady = Promise.all(DECO_NAMES.map((n) => new Promise((res) => {
+  const im = new Image();
+  im.onload = () => { DECOS[n] = im; res(); };
+  im.onerror = res;
+  im.src = `assets/${n}.svg?v=${ASSET_V}`;
+})));
+// (x, y)가 장식의 가운데. w는 가로 크기(세로는 비율대로), rot은 라디안, flip은 좌우 반전
+function deco(ctx, name, x, y, w, rot = 0, flip = false) {
+  const im = DECOS[name]; if (!im) return;
+  const h = w * im.height / im.width;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(im, -w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
+// 사진 액자 모양: round(둥근 사각형, slot.r) / circle(정원) / oval(slot 전체에 꽉 찬 타원). grow는 테두리용으로 바깥으로 넓힘
+function slotPath(ctx, slot, shape = 'round', grow = 0) {
+  const cx = slot.x + slot.w / 2, cy = slot.y + slot.h / 2;
+  if (shape === 'circle') {
+    const r = Math.min(slot.w, slot.h) / 2 + grow;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  } else if (shape === 'oval') {
+    ctx.beginPath(); ctx.ellipse(cx, cy, slot.w / 2 + grow, slot.h / 2 + grow, 0, 0, Math.PI * 2);
+  } else {
+    rrect(ctx, slot.x - grow, slot.y - grow, slot.w + grow * 2, slot.h + grow * 2, slot.r + grow);
+  }
+}
+
 // 큰 사진은 긴 변 2000px로 줄여서 메모리를 아낌
 async function loadPhoto(file) {
   let bmp;
@@ -284,78 +355,370 @@ for (const k of ['title', 'line2', 'outro']) { const v = store(k); if (v) T[k].v
 T.date.value = todayText();
 function texts() { return { title: T.title.value, line2: T.line2.value, date: T.date.value, outro: T.outro.value }; }
 
-// ───────── 이미지 틀 ─────────
+// ───────── 이미지 카드: 사진 1~5장 → 어울리는 카드 4장 ─────────
 const IW = 1080, IH = 1350;
-const IMG_TPLS = [
-  { id: 'card', name: '🎀 생일 카드',
-    slot: { x: 110, y: 330, w: 860, h: 740, r: 40 },
-    draw(ctx, S) {
-      gradient(ctx, IW, IH, '#ffe3ec', '#fff3d6');
-      confetti(ctx, IW, IH, 7, 38);
-      text(ctx, S.t.title, IW / 2, 140, { size: 118, color: '#d6336c', maxW: 940, serif: true, italic: true });
-      text(ctx, S.t.line2, IW / 2, 240, { size: 58, color: '#6b4a56', maxW: 900 });
-      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.18)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 10;
-      rrect(ctx, 96, 316, 888, 768, 48); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
-      S.photo(this.slot);
-      text(ctx, S.t.date, IW / 2, 1170, { size: 46, color: '#6b4a56', maxW: 900, weight: 600 });
-      text(ctx, '♥  ♥  ♥', IW / 2, 1260, { size: 52, color: '#ff6b9d', maxW: 400 });
-    } },
-  { id: 'polaroid', name: '📸 폴라로이드',
-    slot: { x: 40, y: 40, w: 720, h: 720, r: 0 },
-    draw(ctx, S) {
-      gradient(ctx, IW, IH, '#efe6d8', '#e4d6c2');
-      ctx.save(); ctx.translate(IW / 2, IH / 2); ctx.rotate(-0.04); ctx.translate(-400, -520);
-      ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 16;
-      ctx.fillStyle = '#fffdf8'; ctx.fillRect(0, 0, 800, 1040); ctx.shadowColor = 'transparent';
-      S.photo(this.slot);
-      text(ctx, S.t.title, 400, 850, { size: 72, color: '#5b4636', maxW: 700, serif: true, italic: true });
-      text(ctx, S.t.line2, 400, 930, { size: 46, color: '#5b4636', maxW: 700 });
-      text(ctx, S.t.date, 400, 990, { size: 34, color: '#8a7766', maxW: 700, weight: 600 });
-      ctx.restore();
-    } },
-  { id: 'flower', name: '🌸 꽃 테두리',
-    slot: { x: 160, y: 300, w: 760, h: 760, r: 380 },
-    draw(ctx, S) {
-      ctx.fillStyle = '#fffaf0'; ctx.fillRect(0, 0, IW, IH);
-      const r = rng(21), cols = ['#ff8787', '#ffa8a8', '#faa2c1', '#ffc078', '#da77f2', '#74c0fc'];
-      for (let x = 30; x < IW; x += 62) { flower(ctx, x, 36, 26, cols[Math.floor(r() * 6)]); flower(ctx, x + 31, IH - 36, 26, cols[Math.floor(r() * 6)]); }
-      for (let y = 100; y < IH - 60; y += 62) { flower(ctx, 36, y, 26, cols[Math.floor(r() * 6)]); flower(ctx, IW - 36, y + 31, 26, cols[Math.floor(r() * 6)]); }
-      text(ctx, S.t.title, IW / 2, 150, { size: 108, color: '#e8590c', maxW: 880, serif: true, italic: true });
-      text(ctx, S.t.line2, IW / 2, 235, { size: 54, color: '#5f3dc4', maxW: 880 });
-      ctx.beginPath(); ctx.arc(540, 680, 392, 0, 6.3); ctx.fillStyle = '#ffd43b'; ctx.fill();
-      S.photo(this.slot);
-      text(ctx, S.t.date, IW / 2, 1160, { size: 48, color: '#5b4636', maxW: 880, weight: 600 });
-    } },
-  { id: 'dark', name: '✨ 골드 다크',
-    slot: { x: 90, y: 360, w: 900, h: 700, r: 14 },
-    draw(ctx, S) {
-      gradient(ctx, IW, IH, '#14213d', '#0b1426');
-      const r = rng(5); ctx.fillStyle = 'rgba(252,163,17,.55)';
-      for (let i = 0; i < 40; i++) { ctx.beginPath(); ctx.arc(r() * IW, r() * IH, 2 + r() * 4, 0, 6.3); ctx.fill(); }
-      text(ctx, S.t.title, IW / 2, 170, { size: 118, color: '#fca311', maxW: 940, serif: true, italic: true });
-      text(ctx, S.t.line2, IW / 2, 275, { size: 56, color: '#ffffff', maxW: 900 });
-      ctx.strokeStyle = '#fca311'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(300, 325); ctx.lineTo(780, 325); ctx.stroke();
-      ctx.fillStyle = '#fca311'; ctx.fillRect(78, 348, 924, 724);
-      S.photo(this.slot);
-      text(ctx, S.t.date, IW / 2, 1170, { size: 46, color: '#ffffff', maxW: 900, weight: 600 });
-    } },
-];
+const PAL = { pink: '#ffc9dc', hot: '#f4577a', blue: '#5b78c0', sky: '#6fa8f5', yellow: '#ffc94a', mint: '#5fc9d6', ink: '#6b4a56', gold: '#f2c94c' };
 
-const I = { tpl: IMG_TPLS[0], photo: null, view: { zoom: 1, ox: 0, oy: 0 } };
-const icv = $('#icanvas'), ictx = icv.getContext('2d');
-function renderImage() {
-  const S = {
-    t: texts(),
-    photo: (slot) => {
-      ictx.save(); rrect(ictx, slot.x, slot.y, slot.w, slot.h, slot.r); ictx.clip();
-      if (I.photo) drawCover(ictx, I.photo, slot, I.view); else placeholder(ictx, slot, '사진을 골라 주세요');
-      ictx.restore();
-    },
-  };
-  ictx.clearRect(0, 0, IW, IH);
-  I.tpl.draw(ictx, S);
+// 4각 반짝이
+function sparkle(ctx, x, y, r, color, a = 1) {
+  ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = color; ctx.translate(x, y);
+  ctx.beginPath();
+  for (let i = 0; i < 8; i++) { const ang = (i * Math.PI) / 4 - Math.PI / 2, rr = i % 2 ? r * 0.28 : r; ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
 }
-function renderImageSoon() { cancelAnimationFrame(renderImageSoon.id); renderImageSoon.id = requestAnimationFrame(renderImage); }
+// 점·색종이·반짝이를 흩뿌림
+function sprinkles(ctx, seed, count, cols, avoid) {
+  const r = rng(seed);
+  for (let i = 0; i < count; i++) {
+    const x = r() * IW, y = r() * IH, k = r(), c = cols[Math.floor(r() * cols.length)];
+    if (avoid && x > avoid.x && x < avoid.x + avoid.w && y > avoid.y && y < avoid.y + avoid.h) continue;  // 글씨 자리는 비움
+    ctx.fillStyle = c;
+    if (k < 0.45) { ctx.beginPath(); ctx.arc(x, y, 5 + r() * 8, 0, 6.3); ctx.fill(); }
+    else if (k < 0.75) { ctx.save(); ctx.translate(x, y); ctx.rotate(r() * 6.28); ctx.fillRect(-14, -5, 28, 10); ctx.restore(); }
+    else sparkle(ctx, x, y, 14 + r() * 12, c);
+  }
+}
+// 몽글몽글 비눗방울
+function bubbles(ctx, seed, n) {
+  const r = rng(seed);
+  for (let i = 0; i < n; i++) {
+    const x = r() * IW, y = r() * IH, rad = 40 + r() * 90;
+    const g = ctx.createRadialGradient(x - rad * 0.3, y - rad * 0.3, rad * 0.1, x, y, rad);
+    g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,.12)');
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.3); ctx.fillStyle = g; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.stroke();
+  }
+}
+// 마름모 무늬 배경
+function argyle(ctx, c1, c2) {
+  ctx.fillStyle = c1; ctx.fillRect(0, 0, IW, IH); ctx.fillStyle = c2;
+  const s = 110;
+  for (let row = -1; row * s < IH + s; row++) {
+    for (let x = -s; x < IW + s; x += s * 2) {
+      const cx = x + (row % 2 ? s : 0), cy = row * s;
+      ctx.beginPath(); ctx.moveTo(cx, cy - s / 2); ctx.lineTo(cx + s / 2, cy); ctx.lineTo(cx, cy + s / 2); ctx.lineTo(cx - s / 2, cy); ctx.closePath(); ctx.fill();
+    }
+  }
+}
+function dots(ctx, seed, n, color) {
+  const r = rng(seed); ctx.fillStyle = color;
+  for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(r() * IW, r() * IH, 8 + r() * 14, 0, 6.3); ctx.fill(); }
+}
+
+// 카드 하나를 그리는 동안 사진 칸마다 확대·이동 상태(views)를 꺼내 쓰고, 터치 판정용 위치(hits)를 모음. 사진 칸은 그리는 순서대로 0, 1, 2…
+const CUR = { views: [], hits: [], n: 0 };
+// (x, y)에 있는 사진 칸 번호를 찾음. 없으면 -1
+function hitSlot(hits, x, y) {
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const h = hits[i], dx = x - h.cx, dy = y - h.cy, c = Math.cos(-h.rot), s = Math.sin(-h.rot);
+    const lx = dx * c - dy * s, ly = dx * s + dy * c;
+    const inside = h.shape === 'circle' || h.shape === 'oval'
+      ? (lx * lx) / (h.w * h.w / 4) + (ly * ly) / (h.h * h.h / 4) <= 1
+      : Math.abs(lx) <= h.w / 2 && Math.abs(ly) <= h.h / 2;
+    if (inside) return i;
+  }
+  return -1;
+}
+// 사진을 액자(테두리·그림자·기울기)와 함께 그림. o: { shape, border, borderColor, rot, ring: { color, width } }
+function framedPhoto(ctx, img, slot, o = {}) {
+  const shape = o.shape || 'round', b = o.border ?? 18;
+  const view = CUR.views[CUR.n++] || { zoom: 1, ox: 0, oy: 0 };
+  CUR.hits.push({ cx: slot.x + slot.w / 2, cy: slot.y + slot.h / 2, w: slot.w, h: slot.h, rot: o.rot || 0, shape });
+  const s0 = { x: -slot.w / 2, y: -slot.h / 2, w: slot.w, h: slot.h, r: slot.r ?? 40 };
+  ctx.save(); ctx.translate(slot.x + slot.w / 2, slot.y + slot.h / 2); ctx.rotate(o.rot || 0);
+  if (b > 0) {
+    ctx.save(); ctx.shadowColor = 'rgba(80,40,60,.25)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 12;
+    slotPath(ctx, s0, shape, b); ctx.fillStyle = o.borderColor || '#fff'; ctx.fill(); ctx.restore();
+  }
+  ctx.save(); slotPath(ctx, s0, shape); ctx.clip();
+  if (img) drawCover(ctx, img, s0, view); else placeholder(ctx, s0, '사진');
+  ctx.restore();
+  if (o.ring) { slotPath(ctx, s0, shape, b / 2); ctx.lineWidth = o.ring.width; ctx.strokeStyle = o.ring.color; ctx.stroke(); }
+  ctx.restore();
+}
+function tape(ctx, x, y, w, h, rot, color) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = 0.85; ctx.fillStyle = color; ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff';
+  for (let i = -w / 2 + 14; i < w / 2; i += 28) ctx.fillRect(i, -h / 2, 10, h);
+  ctx.restore();
+}
+// 폴라로이드: w는 가로 크기, caption은 아래 여백에 손글씨로
+function polaroid(ctx, img, cx, cy, w, rot, caption, tapeColor) {
+  const pad = w * 0.055, h = w * 1.22, ps = w - pad * 2;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+  ctx.save(); ctx.shadowColor = 'rgba(80,40,60,.3)'; ctx.shadowBlur = 34; ctx.shadowOffsetY = 14;
+  ctx.fillStyle = '#fffdf8'; ctx.fillRect(-w / 2, -h / 2, w, h); ctx.restore();
+  const slot = { x: -w / 2 + pad, y: -h / 2 + pad, w: ps, h: ps };
+  const view = CUR.views[CUR.n++] || { zoom: 1, ox: 0, oy: 0 }, ly = slot.y + slot.h / 2;
+  CUR.hits.push({ cx: cx - ly * Math.sin(rot), cy: cy + ly * Math.cos(rot), w: ps, h: ps, rot, shape: 'round' });
+  ctx.save(); ctx.beginPath(); ctx.rect(slot.x, slot.y, slot.w, slot.h); ctx.clip();
+  if (img) drawCover(ctx, img, slot, view); else placeholder(ctx, slot, '사진');
+  ctx.restore();
+  if (caption) dateT(ctx, caption, 0, (slot.y + slot.h + h / 2) / 2, w * 0.085, w - pad * 3, PAL.blue);
+  if (tapeColor) tape(ctx, 0, -h / 2 + 6, w * 0.3, w * 0.075, -0.05, tapeColor);
+  ctx.restore();
+}
+
+// 글자 스타일: 제목=필기체+흰 외곽선, 이름=둥근 글씨+흰 외곽선, 날짜=손글씨
+function titleT(ctx, s, x, y, size, maxW, color = PAL.blue) {
+  text(ctx, s, x, y, { font: FONTS.script.css, weight: FONTS.script.weight, size, maxW, color, stroke: { color: '#fff', width: size * 0.14 } });
+}
+function nameT(ctx, s, x, y, size, maxW, color = PAL.hot) {
+  text(ctx, s, x, y, { font: FONTS.round.css, weight: FONTS.round.weight, size, maxW, color, stroke: { color: '#fff', width: size * 0.2 } });
+}
+function dateT(ctx, s, x, y, size, maxW, color = PAL.ink) {
+  text(ctx, s, x, y, { font: FONTS.hand.css, weight: FONTS.hand.weight, size, maxW, color });
+}
+
+// 카드에 따로 적는 3줄 문구(손글씨). stroke=true면 흰 외곽선으로 배경 위에서도 읽기 쉽게
+function msgT(ctx, s, x, y, size, maxW, color = PAL.ink, stroke = false) {
+  text(ctx, s, x, y, { font: FONTS.hand.css, weight: FONTS.hand.weight, size, maxW, color, stroke: stroke ? { color: '#fff', width: size * 0.2 } : undefined });
+}
+
+// 분홍·노랑·파랑 파스텔 컨셉은 그대로, 구성과 배경색만 다른 카드들. p는 이 카드에 쓸 사진 배열(없으면 빈 칸 표시)
+const IMG_LAYOUTS = {
+  circle: { name: '동그라미 파티', draw(ctx, p, t) {
+    gradient(ctx, IW, IH, '#ffc6da', '#ffdde9');
+    sprinkles(ctx, 3, 46, [PAL.yellow, PAL.sky, '#ffffff', PAL.hot, PAL.mint], { x: 0, y: 1030, w: 780, h: 320 });
+    framedPhoto(ctx, p[0], { x: 185, y: 250, w: 710, h: 710 }, { shape: 'circle', border: 24 });
+    deco(ctx, 'garland', 540, 115, 1080);
+    deco(ctx, 'star', 150, 500, 120, -0.3); deco(ctx, 'star', 940, 330, 90, 0.3); deco(ctx, 'star', 905, 965, 100, 0.2);
+    deco(ctx, 'balloon', 85, 640, 150, -0.18);
+    titleT(ctx, t.title, 400, 1085, 104, 640);
+    nameT(ctx, t.line2, 400, 1176, 58, 640);
+    dateT(ctx, t.date, 400, 1244, 46, 640);
+    deco(ctx, 'gift', 890, 1165, 330, 0.06);
+  } },
+  duo: { name: '사진 2장 + 문구 3줄', draw(ctx, p, t, o) {
+    argyle(ctx, '#fff8e3', '#fff0c4');
+    sprinkles(ctx, 8, 30, [PAL.hot, PAL.sky, PAL.yellow, PAL.mint]);
+    if (p.length >= 2) {
+      framedPhoto(ctx, p[0], { x: 130, y: 390, w: 400, h: 400 }, { shape: 'circle', border: 20 });
+      framedPhoto(ctx, p[1], { x: 570, y: 490, w: 380, h: 380 }, { shape: 'circle', border: 20 });
+    } else {
+      framedPhoto(ctx, p[0], { x: 295, y: 385, w: 490, h: 490 }, { shape: 'circle', border: 22 });
+    }
+    deco(ctx, 'garland-bright', 540, 115, 1080);
+    titleT(ctx, t.title, 540, 310, 100, 800);
+    deco(ctx, 'balloon-pink', 70, 880, 150, -0.15); deco(ctx, 'balloon', 1010, 450, 140, 0.15, true);
+    if (p.length >= 2) deco(ctx, 'star', 470, 905, 90, 0.2); else deco(ctx, 'star', 190, 900, 90, 0.2);
+    nameT(ctx, t.line2, 540, 962, 58, 640);
+    ctx.save(); ctx.shadowColor = 'rgba(80,40,60,.18)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8;
+    rrect(ctx, 160, 1030, 760, 210, 40); ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fill(); ctx.restore();
+    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1080 + i * 58, 46, 680));
+    dateT(ctx, t.date, 540, 1276, 36, 700, PAL.blue);
+    deco(ctx, 'cake', 80, 1050, 150); deco(ctx, 'gift', 1000, 1055, 140, 0.08);
+  } },
+  polaroid: { name: '폴라로이드', draw(ctx, p, t) {
+    gradient(ctx, IW, IH, '#cfe3ff', '#eef4ff');
+    sprinkles(ctx, 12, 40, ['#ffffff', PAL.hot, PAL.yellow, PAL.sky, PAL.pink]);
+    deco(ctx, 'balloon-pink', 110, 400, 190, -0.2); deco(ctx, 'balloon-yellow', 975, 420, 180, 0.18, true);
+    titleT(ctx, t.title, 540, 140, 124, 900);
+    dateT(ctx, t.date, 540, 235, 54, 700, PAL.blue);
+    polaroid(ctx, p[0], 540, 790, 740, -0.045, t.line2, '#ffd25e');
+    deco(ctx, 'gift', 905, 1215, 300, 0.1); deco(ctx, 'star', 150, 1170, 130, -0.25);
+  } },
+  scatter: { name: '폴라로이드 3장', draw(ctx, p, t) {
+    gradient(ctx, IW, IH, '#cfe3ff', '#eef4ff');
+    sprinkles(ctx, 15, 40, ['#ffffff', PAL.hot, PAL.yellow, PAL.sky, PAL.pink]);
+    const k = Math.min(p.length, 3);
+    const W = { 2: 520, 3: 450 }[k];
+    const POS = {
+      2: [[380, 620, -0.07], [700, 900, 0.06]],
+      3: [[290, 585, -0.08], [790, 660, 0.06], [520, 960, -0.03]],
+    }[k];
+    const tapes = ['#ffd25e', '#ff8fab', '#5fc9d6'];
+    POS.forEach(([x, y, r], i) => polaroid(ctx, p[i], x, y, W, r, '', tapes[i]));
+    titleT(ctx, t.title, 540, 105, 96, 800);
+    nameT(ctx, t.line2, 540, 185, 52, 700);
+    dateT(ctx, t.date, 540, 245, 40, 700, PAL.blue);
+    deco(ctx, 'star', 50, 760, 80, -0.3); deco(ctx, 'star', 1030, 830, 80, 0.3);
+    deco(ctx, 'balloon-pink', 70, 1210, 140, -0.15); deco(ctx, 'balloon-yellow', 1010, 1190, 130, 0.15, true);
+  } },
+  square3: { name: '사각 사진 3장 + 문구 3줄', draw(ctx, p, t, o) {
+    gradient(ctx, IW, IH, '#f9c6e4', '#e2d6ff');
+    bubbles(ctx, 4, 7);
+    sparkle(ctx, 910, 230, 80, '#fff', 0.95); sparkle(ctx, 140, 250, 50, '#fff', 0.8); sparkle(ctx, 970, 1010, 50, '#fff', 0.8); sparkle(ctx, 100, 1010, 60, '#fff', 0.8);
+    const k = Math.max(1, Math.min(p.length, 3));  // 사진이 없으면 빈 칸 1개
+    const S = {
+      1: [{ x: 260, y: 300, w: 560, h: 560, rot: -0.02 }],
+      2: [{ x: 70, y: 330, w: 450, h: 450, rot: -0.04 }, { x: 560, y: 410, w: 450, h: 450, rot: 0.04 }],
+      3: [{ x: 50, y: 330, w: 350, h: 350, rot: -0.05 }, { x: 365, y: 440, w: 350, h: 350, rot: 0.03 }, { x: 680, y: 330, w: 350, h: 350, rot: -0.03 }],
+    }[k];
+    S.forEach((s, i) => framedPhoto(ctx, p[i], { x: s.x, y: s.y, w: s.w, h: s.h, r: 36 }, { border: 16, rot: s.rot }));
+    titleT(ctx, t.title, 540, 150, 124, 800);
+    nameT(ctx, t.line2, 540, 955, 58, 700);
+    o.msg.forEach((m, i) => msgT(ctx, m, 540, 1038 + i * 58, 46, 800, PAL.ink, true));
+    dateT(ctx, t.date, 540, 1222, 42, 760);
+    deco(ctx, 'balloon-yellow', 90, 1200, 150, -0.15); deco(ctx, 'balloon', 990, 1190, 140, 0.15, true);
+    deco(ctx, 'star', 90, 930, 90, -0.3); deco(ctx, 'star', 990, 935, 80, 0.3);
+  } },
+};
+
+// 카드 4장은 자리가 고정. 쓸 사진은 번호(1, 2, 3…) 순서대로 앞에서부터 채우고, 카드 아래 번호 버튼으로 바꿀 수 있음
+const CARD_CAP = [1, 2, 3, 3];  // 카드마다 사진 최대 칸 수
+const cardLayoutId = (i, k) => ['circle', 'duo', k === 1 ? 'polaroid' : 'scatter', 'square3'][i];
+
+// 모든 카드 하단 중앙에 들어가는 어린이집 이름
+const BRAND = '우남사랑아이어린이집';
+function brandMark(ctx) {
+  text(ctx, BRAND, IW / 2, 1322, { font: FONTS.round.css, weight: FONTS.round.weight, size: 30, maxW: 600, color: PAL.ink, stroke: { color: '#fff', width: 8 } });
+}
+
+// 카드마다: 공통 문구 보이기 여부, 3줄 문구(카드 2·4만 사용), 쓸 사진 번호(null이면 기본값)
+const CARD_MSG_DEFAULT = { 1: ['오늘은 가장 특별한 날이에요', '항상 건강하고 밝게 자라렴', '생일 진심으로 축하해요!'], 3: ['사랑하는 우리 아가', '웃음 가득한 하루 보내요', '생일 축하해요!'] };
+const CARD = [0, 1, 2, 3].map((i) => ({
+  hide: { title: false, name: false, date: false },
+  msg: CARD_MSG_DEFAULT[i] ? CARD_MSG_DEFAULT[i].map((d, j) => store(`msg${i}_${j}`) ?? d) : [],
+  sel: null,
+  views: {},   // 사진 번호 → { zoom, ox, oy } (두 손가락으로 조절한 크기·위치)
+}));
+
+const I = { photos: [] };
+const cardCvs = [];
+// i번 카드가 쓰는 사진 번호(0부터). 기본은 앞에서부터 칸 수만큼
+function cardPhotos(i) {
+  const n = I.photos.length, c = CARD[i];
+  if (!n) return [];
+  if (!c.sel || c.sel.some((j) => j >= n)) c.sel = [...Array(Math.min(CARD_CAP[i], n)).keys()];
+  return c.sel;
+}
+function toggleSel(i, j) {
+  const sel = cardPhotos(i).slice(), at = sel.indexOf(j);
+  if (at >= 0) { if (sel.length > 1) sel.splice(at, 1); }       // 최소 1장은 남김
+  else { sel.push(j); if (sel.length > CARD_CAP[i]) sel.shift(); } // 칸이 차면 가장 먼저 고른 사진을 빼고 새로 고른 사진을 넣음
+  CARD[i].sel = sel;
+  updateChips(i); renderCards();
+}
+function updateChips(i) {
+  const host = cardCvs[i].chips, n = I.photos.length, idx = cardPhotos(i);
+  host.innerHTML = ''; host.hidden = !n;
+  if (!n) return;
+  const lab = document.createElement('p'); lab.className = 'hint'; lab.style.margin = '0 0 6px';
+  lab.textContent = `이 카드에 쓴 사진: ${idx.map((j) => j + 1).join(', ')} (칸 순서대로). 번호를 눌러 바꿀 수 있어요.`;
+  const row = document.createElement('div'); row.className = 'chiprow';
+  for (let j = 0; j < n; j++) {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = j + 1;
+    b.setAttribute('aria-pressed', idx.includes(j)); b.setAttribute('aria-label', `사진 ${j + 1}`);
+    b.onclick = () => toggleSel(i, j); row.appendChild(b);
+  }
+  host.append(lab, row);
+}
+
+(() => {
+  const host = $('#cards');
+  for (let i = 0; i < 4; i++) {
+    const box = document.createElement('div'); box.className = 'cardbox';
+    const cap = document.createElement('p'); cap.className = 'cap';
+    const cv = document.createElement('canvas'); cv.className = 'preview'; cv.width = IW; cv.height = IH;
+    const b = document.createElement('button'); b.className = 'btn second'; b.style.marginTop = '8px'; b.textContent = `💾 카드 ${i + 1} 저장`;
+    b.onclick = () => saveCard(i);
+    // 쓸 사진 고르기 (사진을 고른 뒤에만 보임)
+    const chips = document.createElement('div'); chips.className = 'chips'; chips.hidden = true;
+    // 공통 문구 보이기/지우기 (체크를 끄면 이 카드에서만 지워짐)
+    const tog = document.createElement('div'); tog.className = 'copts';
+    for (const [key, label] of [['title', '큰 문구'], ['name', '이름'], ['date', '날짜']]) {
+      const l = document.createElement('label'); l.className = 'tog';
+      const c = document.createElement('input'); c.type = 'checkbox'; c.checked = true;
+      c.onchange = () => { CARD[i].hide[key] = !c.checked; renderCardsSoon(); };
+      l.append(c, ` ${label}`); tog.appendChild(l);
+    }
+    attachGestures(i, cv);
+    const rb = document.createElement('button'); rb.className = 'btn second'; rb.style.cssText = 'margin-top:6px;font-size:15px;padding:10px';
+    rb.textContent = '↺ 사진 크기·위치 처음으로'; rb.onclick = () => { CARD[i].views = {}; renderCard(i); };
+    box.append(cap, cv, chips, tog, rb);
+    // 3줄 문구 입력칸 (카드 2·4)
+    if (CARD[i].msg.length) {
+      const wrap = document.createElement('div'); wrap.className = 'msgs';
+      const h = document.createElement('p'); h.className = 'hint'; h.textContent = `카드 ${i + 1} 문구 (3줄, 비우면 그 줄은 빠져요)`;
+      wrap.appendChild(h);
+      CARD[i].msg.forEach((v, j) => {
+        const inp = document.createElement('input'); inp.type = 'text'; inp.value = v; inp.maxLength = 24; inp.autocomplete = 'off';
+        inp.setAttribute('aria-label', `카드 ${i + 1} 문구 ${j + 1}줄`);
+        inp.oninput = () => { CARD[i].msg[j] = inp.value; store(`msg${i}_${j}`, inp.value); renderCardsSoon(); };
+        wrap.appendChild(inp);
+      });
+      box.appendChild(wrap);
+    }
+    box.appendChild(b);
+    host.appendChild(box); cardCvs.push({ cv, cap, chips });
+  }
+})();
+function renderCard(i, base = texts()) {
+  const { cv, cap } = cardCvs[i], ctx = cv.getContext('2d'), c = CARD[i], idx = cardPhotos(i);
+  const p = idx.length ? idx.map((j) => I.photos[j]) : Array(CARD_CAP[i]).fill(null);  // 사진이 없으면 빈 칸을 보여 줌
+  const id = cardLayoutId(i, p.length);
+  const t = { ...base, title: c.hide.title ? '' : base.title, line2: c.hide.name ? '' : base.line2, date: c.hide.date ? '' : base.date };
+  CUR.views = idx.map((j) => (c.views[j] ||= { zoom: 1, ox: 0, oy: 0 })); CUR.hits = []; CUR.n = 0;
+  ctx.clearRect(0, 0, IW, IH);
+  IMG_LAYOUTS[id].draw(ctx, p, t, { msg: c.msg });
+  brandMark(ctx);
+  cardCvs[i].hits = CUR.hits;
+  cap.textContent = `카드 ${i + 1} · ${IMG_LAYOUTS[id].name}`;
+}
+function renderCards() { const base = texts(); for (let i = 0; i < 4; i++) renderCard(i, base); }
+const cardRaf = [0, 0, 0, 0];
+function renderCardSoon(i) { cancelAnimationFrame(cardRaf[i]); cardRaf[i] = requestAnimationFrame(() => renderCard(i)); }
+
+// 사진 칸 위에서 두 손가락으로 벌리면 크기, 같이 움직이면 위치. 한 손가락은 그대로 스크롤.
+// 컴퓨터: 마우스로 끌면 위치, Ctrl+휠(트랙패드 확대)이면 크기
+function attachGestures(i, cv) {
+  const toCanvas = (x, y) => { const r = cv.getBoundingClientRect(); return [(x - r.left) * IW / r.width, (y - r.top) * IH / r.height]; };
+  const pts = (list) => [...list].map((t) => toCanvas(t.clientX, t.clientY));
+  const mid = (a) => a.length === 2 ? [(a[0][0] + a[1][0]) / 2, (a[0][1] + a[1][1]) / 2] : a[0];
+  const dist = (a) => a.length === 2 ? Math.hypot(a[1][0] - a[0][0], a[1][1] - a[0][1]) : 0;
+  const viewOf = (k) => { const j = cardPhotos(i)[k]; return j === undefined ? null : (CARD[i].views[j] ||= { zoom: 1, ox: 0, oy: 0 }); };
+  let g = null;
+  const begin = (a) => {
+    const m = mid(a), k = hitSlot(cardCvs[i].hits || [], m[0], m[1]), view = k >= 0 ? viewOf(k) : null;
+    g = view ? { k, view, m, d: dist(a), z: view.zoom, ox: view.ox, oy: view.oy } : null;
+  };
+  const move = (a) => {
+    if (!g) return;
+    const m = mid(a), r = -cardCvs[i].hits[g.k].rot, c = Math.cos(r), s = Math.sin(r), dx = m[0] - g.m[0], dy = m[1] - g.m[1];
+    g.view.ox = g.ox + dx * c - dy * s; g.view.oy = g.oy + dx * s + dy * c;   // 기울어진 칸은 칸 기준 방향으로 옮김
+    if (a.length === 2 && g.d > 0) g.view.zoom = clamp(g.z * dist(a) / g.d, 1, 4);
+    renderCardSoon(i);
+  };
+  cv.addEventListener('touchstart', (e) => { if (e.touches.length === 2) { e.preventDefault(); begin(pts(e.touches)); } }, { passive: false });
+  cv.addEventListener('touchmove', (e) => { if (e.touches.length === 2 && g) { e.preventDefault(); move(pts(e.touches)); } }, { passive: false });
+  cv.addEventListener('touchend', (e) => { if (e.touches.length < 2) g = null; });
+  cv.addEventListener('touchcancel', () => { g = null; });
+  cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { begin([toCanvas(e.clientX, e.clientY)]); if (g) cv.setPointerCapture(e.pointerId); } });
+  cv.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' && g) move([toCanvas(e.clientX, e.clientY)]); });
+  const up = (e) => { if (e.pointerType === 'mouse') g = null; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  cv.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;                       // 그냥 휠은 페이지 스크롤
+    const [x, y] = toCanvas(e.clientX, e.clientY), k = hitSlot(cardCvs[i].hits || [], x, y), v = k >= 0 ? viewOf(k) : null;
+    if (!v) return;
+    e.preventDefault(); v.zoom = clamp(v.zoom * (e.deltaY < 0 ? 1.06 : 1 / 1.06), 1, 4); renderCardSoon(i);
+  }, { passive: false });
+}
+function renderCardsSoon() { cancelAnimationFrame(renderCardsSoon.id); renderCardsSoon.id = requestAnimationFrame(renderCards); }
+
+function download(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+const cardBlob = (i) => new Promise((r) => cardCvs[i].cv.toBlob(r, 'image/jpeg', 0.92));
+const cardName = (i) => `생일카드_${fileStamp()}_${i + 1}.jpg`;
+async function saveCard(i) {
+  if (!I.photos.length) { $('#icards-msg').textContent = '먼저 사진을 한 장 이상 골라 주세요.'; return; }
+  $('#icards-msg').textContent = '';
+  download(await cardBlob(i), cardName(i));
+}
+$('#isaveall').onclick = async () => {
+  if (!I.photos.length) { $('#icards-msg').textContent = '먼저 사진을 한 장 이상 골라 주세요.'; return; }
+  $('#icards-msg').textContent = '';
+  for (let i = 0; i < 4; i++) { download(await cardBlob(i), cardName(i)); await new Promise((r) => setTimeout(r, 400)); }
+};
+$('#ishare').onclick = async () => {
+  if (!I.photos.length) { $('#icards-msg').textContent = '먼저 사진을 한 장 이상 골라 주세요.'; return; }
+  const files = await Promise.all([0, 1, 2, 3].map(async (i) => new File([await cardBlob(i)], cardName(i), { type: 'image/jpeg' })));
+  try { await navigator.share({ files }); } catch (e) { /* 취소 */ }
+};
+$('#ishare').hidden = !(navigator.canShare && navigator.canShare({ files: [new File([''], 'a.jpg', { type: 'image/jpeg' })] }));
 
 function buildTplButtons(list, host, current, onPick) {
   host.innerHTML = '';
@@ -366,26 +729,47 @@ function buildTplButtons(list, host, current, onPick) {
     host.appendChild(b);
   });
 }
-buildTplButtons(IMG_TPLS, $('#itpls'), I.tpl, (t) => { I.tpl = t; I.view.ox = I.view.oy = 0; renderImage(); });
 
-$('#ifile').onchange = async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  try { I.photo = await loadPhoto(f); I.view = { zoom: 1, ox: 0, oy: 0 }; $('#izoom').value = 1; renderImage(); }
-  catch (err) { $('#status').textContent = '이 사진은 열 수 없어요. 다른 사진을 골라 주세요.'; }
-};
-$('#izoom').oninput = (e) => { I.view.zoom = +e.target.value; renderImageSoon(); };
-(() => {
-  let down = false, lx = 0, ly = 0;
-  icv.addEventListener('pointerdown', (e) => { down = true; lx = e.clientX; ly = e.clientY; icv.setPointerCapture(e.pointerId); });
-  icv.addEventListener('pointermove', (e) => {
-    if (!down) return;
-    const k = icv.width / icv.getBoundingClientRect().width;
-    I.view.ox += (e.clientX - lx) * k; I.view.oy += (e.clientY - ly) * k; lx = e.clientX; ly = e.clientY;
-    renderImageSoon();
+// 사진 목록(썸네일, 순서 바꾸기, 지우기). 이미지·영상 탭이 같이 씀
+function thumbList(list, host, onChange) {
+  host.innerHTML = '';
+  list.forEach((c, i) => {
+    const d = document.createElement('div'); d.className = 'thumb';
+    const bd = document.createElement('span'); bd.className = 'badge'; bd.textContent = i + 1;
+    const im = document.createElement('img'); im.alt = `사진 ${i + 1}`;
+    const tc = document.createElement('canvas'); tc.width = tc.height = 160;
+    drawCover(tc.getContext('2d'), c, { x: 0, y: 0, w: 160, h: 160 }, { zoom: 1, ox: 0, oy: 0 });
+    im.src = tc.toDataURL('image/jpeg', 0.7);
+    const ctl = document.createElement('div'); ctl.className = 'ctl';
+    const mk = (label, fn, aria) => { const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-label', aria); b.onclick = fn; return b; };
+    ctl.append(
+      mk('◀', () => { if (i > 0) { [list[i - 1], list[i]] = [list[i], list[i - 1]]; onChange(); } }, '앞으로'),
+      mk('✕', () => { list.splice(i, 1); onChange(); }, '지우기'),
+      mk('▶', () => { if (i < list.length - 1) { [list[i + 1], list[i]] = [list[i], list[i + 1]]; onChange(); } }, '뒤로'));
+    d.append(bd, im, ctl); host.appendChild(d);
   });
-  const up = () => { down = false; };
-  icv.addEventListener('pointerup', up); icv.addEventListener('pointercancel', up);
-})();
+}
+function refreshImgThumbs() {
+  thumbList(I.photos, $('#ithumbs'), refreshImgThumbs);
+  const n = I.photos.length;
+  CARD.forEach((c) => { c.sel = null; c.views = {}; });  // 사진 목록이 바뀌면 카드별 선택과 크기·위치는 기본으로 되돌림
+  $('#icount').textContent = n === 0
+    ? '사진을 1~5장 골라 주세요. 고르지 않아도 아래 ③에서 카드 샘플을 먼저 볼 수 있어요.'
+    : `${n}장 골랐어요. 사진은 번호(1, 2, 3…) 순서대로 카드에 들어가요. 순서는 ◀ ▶ 로 바꾸고, 카드마다 쓸 사진은 카드 아래에서 고를 수 있어요.`;
+  for (let i = 0; i < 4; i++) updateChips(i);
+  renderCards();
+}
+$('#ifile').onchange = async (e) => {
+  const files = [...e.target.files]; e.target.value = '';
+  const room = 5 - I.photos.length;
+  let msg = '';
+  if (files.length > room) msg = '사진은 최대 5장까지예요. 앞의 사진만 넣었어요.';
+  for (const f of files.slice(0, room)) {
+    try { I.photos.push(await loadPhoto(f)); } catch (err) { msg = '열 수 없는 사진은 건너뛰었어요.'; }
+  }
+  refreshImgThumbs();
+  if (msg) $('#icount').textContent = msg;
+};
 
 // ───────── 영상 틀 ─────────
 const VW = 1080, VH = 1920, FPS = 30, INTRO = 2, OUTRO = 2, FADE = 0.45;
@@ -499,21 +883,7 @@ $('#vplay').onclick = () => {
 };
 
 function refreshThumbs() {
-  const host = $('#vthumbs'); host.innerHTML = '';
-  V.photos.forEach((c, i) => {
-    const d = document.createElement('div'); d.className = 'thumb';
-    const im = document.createElement('img'); im.alt = `사진 ${i + 1}`;
-    const tc = document.createElement('canvas'); tc.width = tc.height = 160;
-    drawCover(tc.getContext('2d'), c, { x: 0, y: 0, w: 160, h: 160 }, { zoom: 1, ox: 0, oy: 0 });
-    im.src = tc.toDataURL('image/jpeg', 0.7);
-    const ctl = document.createElement('div'); ctl.className = 'ctl';
-    const mk = (label, fn, aria) => { const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-label', aria); b.onclick = fn; return b; };
-    ctl.append(
-      mk('◀', () => { if (i > 0) { [V.photos[i - 1], V.photos[i]] = [V.photos[i], V.photos[i - 1]]; refreshThumbs(); } }, '앞으로'),
-      mk('✕', () => { V.photos.splice(i, 1); refreshThumbs(); }, '지우기'),
-      mk('▶', () => { if (i < V.photos.length - 1) { [V.photos[i + 1], V.photos[i]] = [V.photos[i], V.photos[i + 1]]; refreshThumbs(); } }, '뒤로'));
-    d.append(im, ctl); host.appendChild(d);
-  });
+  thumbList(V.photos, $('#vthumbs'), refreshThumbs);
   const n = V.photos.length;
   $('#vcount').textContent = n === 0 ? '아직 고른 사진이 없어요.' : n < 3 ? `${n}장 골랐어요. ${3 - n}장 더 골라 주세요.` : `${n}장 골랐어요. 순서는 ◀ ▶ 로 바꿀 수 있어요.`;
   renderVideoPreview();
@@ -598,11 +968,13 @@ function setTab(name) {
   $('#outro-wrap').hidden = name !== 'vid';
   $('#tab-img').setAttribute('aria-selected', name === 'img'); $('#tab-vid').setAttribute('aria-selected', name === 'vid');
   $('#result').hidden = true; $('#status').textContent = '';
-  if (name === 'vid') renderVideoPreview(); else renderImage();
+  $('#step-cards').hidden = name !== 'img'; $('#step-make').hidden = name !== 'vid';
+  $('#tno').textContent = name === 'img' ? '②' : '③';
+  if (name === 'vid') renderVideoPreview(); else renderCards();
 }
 $('#tab-img').onclick = () => setTab('img'); $('#tab-vid').onclick = () => setTab('vid');
 for (const k of ['title', 'line2', 'outro']) T[k].addEventListener('input', () => store(k, T[k].value));
-for (const el of Object.values(T)) el.addEventListener('input', () => { if (tab === 'img') renderImageSoon(); else renderVideoPreview(); });
+for (const el of Object.values(T)) el.addEventListener('input', () => { if (tab === 'img') renderCardsSoon(); else renderVideoPreview(); });
 
 function showResult(blob, ext) {
   out = { blob, name: `${tab === 'img' ? '생일사진' : '생일영상'}_${fileStamp()}.${ext}` };
@@ -629,13 +1001,6 @@ $('#make').onclick = async () => {
   const btn = $('#make'), bar = $('#bar'), status = $('#status');
   $('#result').hidden = true; status.textContent = '';
   try {
-    if (tab === 'img') {
-      if (!I.photo) { status.textContent = '먼저 사진을 한 장 골라 주세요.'; return; }
-      renderImage();
-      const blob = await new Promise((r) => icv.toBlob(r, 'image/jpeg', 0.92));
-      showResult(blob, 'jpg');
-      return;
-    }
     if (V.photos.length < 3) { status.textContent = '사진을 3장 이상 골라 주세요.'; return; }
     btn.disabled = true; bar.hidden = false; stopPlay();
     const n = Math.min(5, V.photos.length), fill = bar.firstElementChild;
@@ -654,7 +1019,9 @@ $('#make').onclick = async () => {
   }
 };
 
-renderImage();
+renderCards();
+// 글꼴·장식이 준비되면 다시 그림
+Promise.all([loadFonts(), decosReady]).then(() => { if (tab === 'img') renderCards(); else renderVideoPreview(); });
 </script>
 </body>
 </html>

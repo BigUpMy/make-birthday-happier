@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="250" viewBox="0 0 1080 250">
+  <path d="M0 20 Q540 190 1080 20" fill="none" stroke="#3b2a30" stroke-width="5" stroke-linecap="round"/>
+  <g stroke-linejoin="round" stroke-width="8">
+    <path transform="translate(75.6 42.1) rotate(15.1)" d="M-50 -4 H50 L0 120Z" fill="#ffc94a" stroke="#ffc94a"/>
+    <path transform="translate(205.2 72.3) rotate(11.0)" d="M-50 -4 H50 L0 120Z" fill="#5fc9d6" stroke="#5fc9d6"/>
+    <path transform="translate(334.8 92.7) rotate(6.8)" d="M-50 -4 H50 L0 120Z" fill="#ff8fab" stroke="#ff8fab"/>
+    <path transform="translate(464.4 103.3) rotate(2.5)" d="M-50 -4 H50 L0 120Z" fill="#6fa8f5" stroke="#6fa8f5"/>
+    <path transform="translate(594.0 104.1) rotate(-1.8)" d="M-50 -4 H50 L0 120Z" fill="#ff5c7c" stroke="#ff5c7c"/>
+    <path transform="translate(723.6 95.2) rotate(-6.1)" d="M-50 -4 H50 L0 120Z" fill="#ffc94a" stroke="#ffc94a"/>
+    <path transform="translate(853.2 76.4) rotate(-10.3)" d="M-50 -4 H50 L0 120Z" fill="#5fc9d6" stroke="#5fc9d6"/>
+    <path transform="translate(982.8 47.8) rotate(-14.5)" d="M-50 -4 H50 L0 120Z" fill="#ff8fab" stroke="#ff8fab"/>
+  </g>
+</svg>
